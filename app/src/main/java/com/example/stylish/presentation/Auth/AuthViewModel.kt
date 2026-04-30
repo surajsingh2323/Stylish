@@ -10,11 +10,14 @@ import com.example.stylish.domain.usercase.SignupUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.example.stylish.domain.util.Result
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -82,5 +85,19 @@ class AuthViewModel @Inject constructor(
     // Fix: reset state to avoid repeated navigation
     fun resetAuthState(){
         _authState.value = Result.Idle
+    }
+
+
+    fun sendPasswordReset(email: String) {
+        _authState.value = Result.Loading
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Firebase call
+                Firebase.auth.sendPasswordResetEmail(email).await()
+                _authState.value = Result.Success("Reset email sent")
+            } catch (e: Exception) {
+                _authState.value = Result.Failure(e.message ?: "Failed to send email")
+            }
+        }
     }
 }

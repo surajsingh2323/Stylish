@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -178,6 +177,7 @@ fun ProductDetailScreen(
                     modifier = Modifier.fillMaxSize()
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
+                        .padding(bottom = 100.dp)
                 ){
                     // Product Images
                     ProductImageGallery(
@@ -216,7 +216,7 @@ fun ProductImageGallery(
     onImageSelected: (Int) -> Unit
 ){
     val context = LocalContext.current
-    val images = if (product.images.isNotEmpty()) product.images else listOf(product.thumbnail)
+    val images = product.images.ifEmpty { listOf(product.thumbnail) }
 
     Column{
         // Main Image
@@ -417,8 +417,8 @@ private fun AddToCartSection(
 ){
     Column (
         modifier = Modifier
-            .padding(16.dp)
-            .navigationBarsPadding() // ✅ ADDED: Prevents buttons from hiding under system nav bar
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)
+            // ✅ ADDED: Prevents buttons from hiding under system nav bar
     ){
         // ✅ CHANGED: Wrapped buttons in a Row to save vertical space
         Row(

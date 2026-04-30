@@ -1,6 +1,7 @@
 package com.example.stylish.Presentation.Auth
 
 import android.app.Activity
+import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -44,6 +45,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,13 +70,21 @@ fun LoginScreen(
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    var passwordVisible by remember { mutableStateOf(false) } // Eye icon toggle state.
+
+// input validation error state.
+    var emailError by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf("") }
+
+
+
     val context = LocalContext.current
     val authState by authViewModel.authState.collectAsState()
 
     // Google Sign-In launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+        contract = ActivityResultContracts.StartActivityForResult()// the contract type. Means "I will start an Activity and get a result back."
+    ) { result -> // The callback { result -> } runs when Google's sign-in screen closes and returns to your app.
         android.util.Log.d("LoginScreen", "Google Sign-In result code: ${result.resultCode}")
         when (result.resultCode) {
             Activity.RESULT_OK -> {
@@ -95,6 +106,11 @@ fun LoginScreen(
                         errorMessage = "Google sign-in failed: Account is null"
                         android.util.Log.e("LoginScreen", "Account is null")
                     }
+//                    result.data               → Intent containing Google account info
+//                    getSignedInAccountFromIntent() → extracts account from that Intent
+//                    task.getResult()          → gets the GoogleSignInAccount object
+//                    account.idToken           → JWT token Firebase needs to verify the user
+//                    authViewModel.signInWithGoogle(account) → sends to ViewModel → Firebase
                 } catch (e: ApiException) {
                     showError = true
                     errorMessage = "Google sign-in failed: Code ${e.statusCode} - ${e.message}"
@@ -122,11 +138,17 @@ fun LoginScreen(
                     popUpTo(Routes.LoginScreen) { inclusive = true }
                 }
             }
+//            Back stack without popUpTo:     Back stack with popUpTo:
+//                ProductListScreen               ProductListScreen
+//                        LoginScreen          →          (LoginScreen removed)
+//            SplashScreen                    SplashScreen
             is Result.Failure -> {
                 showError = true
                 errorMessage = currentState.message
             }
             Result.Idle, Result.Loading -> {
+
+
 
             }
         }
@@ -228,18 +250,24 @@ fun LoginScreen(
                 )
                 Icon(
                     painter = painterResource(R.drawable.eye),
-                    tint = Color.Black,
-                    contentDescription = "Visibility",
+                    tint = if (passwordVisible) Color(0xFF8817C6) else Color.Black,
+                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
                     modifier = Modifier
                         .padding(end = 15.dp)
                         .align(Alignment.CenterEnd)
                         .size(25.dp)
+                        .clickable{ passwordVisible = !passwordVisible } // toggle on tap
                 )
                 TextField( value = userPassword,
                     onValueChange = { userPassword = it },
                     modifier = Modifier
                         .padding(start = 45.dp, end = 45.dp)
                         .fillMaxSize(),
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent
@@ -295,10 +323,29 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .background(Color(0xFF8817C6))
                     .clickable {
-                        if (userNameAndEmail.isNotBlank() && userPassword.isNotBlank()) {
+                        var hasError = false
+
+                        if (userNameAndEmail.isBlank()) {
+                            emailError = "Email cannot be empty"
+                            hasError = true
+                        } else if (!Patterns.EMAIL_ADDRESS.matcher(userNameAndEmail).matches()) {
+                            emailError = "Invalid email format"
+                            hasError = true
+                        }
+
+                        if (userPassword.isBlank()) {
+                            passwordError = "Password cannot be empty"
+                            hasError = true
+                        } else if (userPassword.length < 6) {
+                            passwordError = "Password must be at least 6 characters"
+                            hasError = true
+                        }
+
+                        if (!hasError) {
                             authViewModel.login(userNameAndEmail, userPassword)
                         }
                     }
+
             ) {
                 if (authState is Result.Loading) {
                     CircularProgressIndicator(
@@ -314,7 +361,8 @@ fun LoginScreen(
                         modifier = Modifier.align(Alignment.Center),
                         letterSpacing = 0.5.sp
                     )
-                }    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(40.dp))
 
@@ -390,7 +438,7 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Create And Account",
+                    text = "Create An Account",
                     color = Color.Gray,
                     fontSize = 14.sp,    letterSpacing = 0.5.sp
                 )
